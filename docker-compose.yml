@@ -1,0 +1,60 @@
+version: '3.4'
+
+services:
+  # DATA ENGINEERING MODULE
+  ## Reimplement this section if you're taking the data engineering test!
+  operational-db:
+    image: postgres:13
+    container_name: operational-db
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "admin", "-d", "companydata"]
+      interval: 5s
+      retries: 5
+    environment:
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=admin
+      - POSTGRES_DB=companydata
+    volumes:
+      - ./modules/de/db_admin/setup_users.sql:/docker-entrypoint-initdb.d/setup_users.sql
+
+  airflow:
+    build:
+      context: ./modules/de/docker
+    container_name: airflow
+    ports:
+      - 8082:8082
+    environment:
+      - ADMIN_DB_USER=admin
+      - ADMIN_DB_PASSWORD=${ADMIN_DB_PASSWORD}  # password for the DB admin user
+      - AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION=True
+      - AIRFLOW__CORE__LOAD_EXAMPLES=False
+      - AIRFLOW__DATABASE__LOAD_DEFAULT_CONNECTIONS=False
+      - AIRFLOW_HOME=/opt/airflow
+      - _AIRFLOW_DB_UPGRADE=True
+      - _AIRFLOW_WWW_USER_CREATE=True
+      - _AIRFLOW_WWW_USER_USERNAME=airflow
+      - _AIRFLOW_WWW_USER_PASSWORD=airflow
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./modules/de/dags:/opt/airflow/dags
+      - ./modules/de/plugins:/opt/airflow/plugins
+
+  # DATA SCIENCE MODULE
+  ## Reimplement this section if you're taking the data science test!
+  model-training:
+    build:
+      context: ./modules  # need this context in order to be able to copy the MLE nodule to the Docker image
+      dockerfile: ./ds/docker/Dockerfile
+    environment:
+      - DS_DB_USER=ds_user
+      - DS_DB_PASSWORD=${DS_DB_PASSWORD}  # password for the DB admin user
+      - DB_HOSTNAME=${DB_HOSTNAME}
+      - DB_PORT=${DB_PORT}
+    depends_on:
+      - operational-db
+    volumes:
+      - ./modules/ds/models/:/models
