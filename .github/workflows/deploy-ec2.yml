@@ -2,8 +2,7 @@ name: Deploy Deployment Image To EC2
 
 on:
   workflow_run:
-    workflows:
-      - Build And Publish Deployment Image
+    workflows: ["Build And Publish Deployment Image"]
     types:
       - completed
 
@@ -40,6 +39,8 @@ jobs:
             mkdir -p "$DEPLOY_DIR/storage"
             cd "$DEPLOY_DIR"
 
+            test -f docker-compose.yml
+
             cat > .env <<EOF
             DOCKERHUB_IMAGE=${{ secrets.DOCKERHUB_IMAGE }}
             IMAGE_TAG=sha-${{ github.event.workflow_run.head_sha }}
@@ -47,7 +48,9 @@ jobs:
 
             echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
             docker compose pull
-            docker compose up -d
+            docker compose up -d --force-recreate
+            docker compose ps
+            docker image prune -f
             sleep 15
             curl --fail http://localhost:5000/health
             curl --fail \
