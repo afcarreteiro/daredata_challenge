@@ -55,5 +55,5 @@ class MLEModel():
 			with open(f'{expanduser("~")}/mle_storage/labels', 'a+') as f:
 				f.write(f"{client_idx},{predicted_label}\n")
 		except FileNotFoundError:
-			logger.warning(f"Prediction storage directory not found: {expanduser("~")}/mle_storage")
+			logger.warning("Prediction storage directory not found: %s/mle_storage", expanduser("~"))
 			print("Have you created the ~/mle_storage directory?")
