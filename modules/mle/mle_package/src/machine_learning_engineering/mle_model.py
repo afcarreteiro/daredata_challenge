@@ -1,6 +1,9 @@
-from typing import Iterable, Any
-import pandas as pd
+from typing import Any
+import logging
 from os.path import expanduser
+
+
+logger = logging.getLogger(__name__)
 
 
 class MLEModel():
@@ -34,8 +37,12 @@ class MLEModel():
 		Calls the predict function, implemented by the data scientist, and logs the results
 		of the prediction to storage.
 		"""
+		logger.info(f"Predicting label for client_idx={client_idx}")
 		predicted_label = self.predict(features)
 		self.log_to_storage(client_idx, predicted_label)
+		logger.info(
+			f"Prediction stored for client_idx={client_idx} with predicted_label={predicted_label}",
+		)
 
 		return predicted_label
 
@@ -48,4 +55,5 @@ class MLEModel():
 			with open(f'{expanduser("~")}/mle_storage/labels', 'a+') as f:
 				f.write(f"{client_idx},{predicted_label}\n")
 		except FileNotFoundError:
+			logger.warning(f"Prediction storage directory not found: {expanduser("~")}/mle_storage")
 			print("Have you created the ~/mle_storage directory?")

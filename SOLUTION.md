@@ -8,7 +8,9 @@ It will be expanded as the DE, deployment, and extra-task work moves forward.
 - The DE module uses a single Postgres container as the operational database and a single Airflow container as the workflow orchestrator.
 - Airflow is intentionally kept simple: one container runs both the scheduler and the webserver, which is enough for the challenge while still providing scheduling, retries, and reruns from the UI.
 - Shared ETL logic lives in a small Python package under the Airflow DAGs folder so the DAG files stay orchestration-focused.
-- The deployment direction remains a single AWS EC2 instance with GitHub Actions-based CI/CD, but that work will be implemented after the DE module is stable.
+- The deployment direction is a single AWS EC2 instance pulling immutable Docker Hub images, with GitHub Actions split into separate CI and CD workflows.
+
+-------
 
 ## Architecture Diagrams
 
@@ -24,7 +26,7 @@ flowchart LR
     API --> USERS[End users]
 ```
 
-
+-------
 
 ### DE Module Flow
 
@@ -42,56 +44,59 @@ flowchart TD
     I --> J[(feature_store)]
 ```
 
-
+--------
 
 ### Planned Deployment Flow
 
 ```mermaid
 flowchart LR
-    GH[Push to main] --> CI[GitHub Actions]
+    GH[Push to main] --> CI[CI Workflow]
     CI --> TESTS[black + pytest]
-    TESTS --> PKG[Package API and model artifacts]
-    PKG --> EC2[AWS EC2]
+    TESTS --> HUB[Docker Hub Image]
+    HUB --> CD[CD Workflow]
+    CD --> EC2[AWS EC2]
     EC2 --> API[Flask /predict API]
 ```
+
+--------
 
 ## Validation Screenshots
 
 ### Airflow DAGs Working
 
-<img src="./screenshots/DAGS_working.png" alt="Airflow DAGs working" width="900" />
+
 
 ### Airflow DAG Activity
 
-<img src="./screenshots/DAGS_Activity.png" alt="Airflow DAG activity" width="900" />
+
 
 ### Database Validation
 
-<img src="./screenshots/feature_store_data.png" alt="feature_store data preview" width="900" />
 
-<img src="./screenshots/feature_store_count.png" alt="feature_store row count" width="700" />
-
-<img src="./screenshots/montly_sales_data.png" alt="monthly_sales data preview" width="900" />
-
+--------
 
 
 ## Timeline
 
 
-| Date       | Task                                                         | Time Spent | Status | Notes                                                                                |
-| ---------- | ------------------------------------------------------------ | ---------- | ------ | ------------------------------------------------------------------------------------ |
-| 2026-04-21 | Initialize repository and create baseline `main` commit      | 0h15m      | Done   | Challenge-required clean starting point                                              |
-| 2026-04-21 | Review challenge scope and module contracts                  | 0h20m      | Done   | Read root README plus DE and deployment instructions                                 |
-| 2026-04-21 | Define minimal architecture for DE and deployment            | 0h25m      | Done   | Chose Airflow + Postgres, Flask + EC2 + GitHub Actions                               |
-| 2026-04-21 | Implement initial DE framework                               | 1h30m      | Done   | Airflow image, SQL bootstrap, shared ETL package, DAGs                               |
-| 2026-04-21 | Correct DE workflow shape and sales idempotency              | 0h25m      | Done   | Split customer DAG into explicit tasks and simplified monthly sales reload logic     |
-| 2026-04-21 | Resolve container and dependency issues during DE validation | 0h30m      | Done   | Fixed Airflow Docker startup issues and pandas/SQLAlchemy compatibility problem      |
-| 2026-04-21 | Stabilize Airflow scheduler metadata storage                 | 0h20m      | Done   | Moved Airflow metadata from SQLite to Postgres to avoid scheduler heartbeat failures |
-| 2026-04-21 | Fix sales ETL database transaction path                      | 0h20m      | Done   | Kept delete/insert operations on the same DB connection and added step-level logging |
-| 2026-04-21 | Fix DS Docker build compatibility                            | 0h15m      | Done   | Aligned DS and MLE package metadata and DS runtime with the Python version supported by auto-sklearn |
-| 2026-04-21 | Fix DS runtime NumPy/Pandas binary compatibility             | 0h10m      | Done   | Restricted NumPy to `<2` so the DS container could import pandas and finish model training |
-| 2026-04-21 | Implement deployment API and CI/CD foundation                | 0h45m      | Done   | Added Flask API, Docker runtime, API tests, and GitHub Actions deployment to EC2 |
+| Date       | Task                                                         | Time Spent | Status | Notes                                                                                                      |
+| ---------- | ------------------------------------------------------------ | ---------- | ------ | ---------------------------------------------------------------------------------------------------------- |
+| 2026-04-21 | Initialize repository and create baseline `main` commit      | 0h15m      | Done   | Challenge-required clean starting point                                                                    |
+| 2026-04-21 | Review challenge scope and module contracts                  | 0h20m      | Done   | Read root README plus DE and deployment instructions                                                       |
+| 2026-04-21 | Define minimal architecture for DE and deployment            | 0h25m      | Done   | Chose Airflow + Postgres, Flask + EC2 + GitHub Actions                                                     |
+| 2026-04-21 | Implement initial DE framework                               | 1h30m      | Done   | Airflow image, SQL bootstrap, shared ETL package, DAGs                                                     |
+| 2026-04-21 | Correct DE workflow shape and sales idempotency              | 0h25m      | Done   | Split customer DAG into explicit tasks and simplified monthly sales reload logic                           |
+| 2026-04-21 | Resolve container and dependency issues during DE validation | 0h30m      | Done   | Fixed Airflow Docker startup issues and pandas/SQLAlchemy compatibility problem                            |
+| 2026-04-21 | Stabilize Airflow scheduler metadata storage                 | 0h20m      | Done   | Moved Airflow metadata from SQLite to Postgres to avoid scheduler heartbeat failures                       |
+| 2026-04-21 | Fix sales ETL database transaction path                      | 0h20m      | Done   | Kept delete/insert operations on the same DB connection and added step-level logging                       |
+| 2026-04-21 | Fix DS Docker build compatibility                            | 0h15m      | Done   | Aligned DS and MLE package metadata and DS runtime with the Python version supported by auto-sklearn       |
+| 2026-04-21 | Fix DS runtime NumPy/Pandas binary compatibility             | 0h10m      | Done   | Restricted NumPy to `<2` so the DS container could import pandas and finish model training                 |
+| 2026-04-21 | Implement DS extra task for dynamic model artifact naming    | 0h15m      | Done   | Saved timestamped model/OHE artifacts and made model loading pick the latest matching pair by default      |
+| 2026-04-21 | Implement MLE extra task for base-model logging              | 0h10m      | Done   | Added lightweight logging around prediction and prediction-storage writes in `MLEModel`                    |
+| 2026-04-21 | Implement deployment API and CI/CD foundation                | 1h00m      | Done   | Added Flask API, Docker runtime, API tests, and GitHub Actions deployment to EC2                           |
+| 2026-04-21 | Refactor deployment to immutable image CI/CD                 | 0h45m      | Done   | Split CI and CD workflows, switched EC2 runtime to Docker Hub image pulls, and prepared runtime env config |
 
+----------
 
 ## Decisions And Rationale
 
@@ -125,15 +130,40 @@ flowchart LR
 - Reason: the challenge describes a workflow that fetches the customer-related files individually, and the Airflow UI is clearer when each file load is visible as its own task.
 - Impact: reviewers can inspect task-level behavior directly in the DAG graph instead of seeing one opaque loader task.
 
-### Decision 7: Deploy the model behind a minimal Flask API on a single EC2 instance
+### Decision 7: Save DS artifacts with timestamped filenames and load the latest by default
+
+- Reason: the extra task explicitly asks for dynamic model naming by timestamp while keeping deployment usage simple.
+- How it was made: `SimpleModel.save()` was updated to create `model_<timestamp>.pkl` and `one_hot_encoder_<timestamp>.pkl`, and `SimpleModel.load()` now scans the model folder, picks the latest matching pair, and still falls back to the legacy static filenames if needed.
+- Impact: multiple training runs can coexist in the same model directory without overwriting each other, and the deployment code can keep calling `load(model_folder)` without extra parameters.
+
+### Decision 8: Add lightweight logging to the shared MLE base class
+
+- Reason: the MLE extra task is small and is best handled centrally so every derived model benefits without duplicated code.
+- How it was made: the `MLEModel` class now uses the standard library `logging` module to log when a prediction starts, when it is persisted, and when the storage directory is missing.
+- Impact: prediction flow is easier to observe during runtime while keeping the existing public API and storage behavior unchanged.
+
+### Decision 9: Deploy the model behind a minimal Flask API on a single EC2 instance
 
 - Reason: one Dockerized Flask service on EC2 is the simplest approach that still satisfies the internet-access requirement and keeps the deployment easy to explain.
 - Impact: the production path stays small, with one API service, one public endpoint, and no extra orchestration layers.
 
-### Decision 8: Use GitHub Actions to validate and deploy API code plus committed model artifacts
+### Decision 10: Use GitHub Actions to validate and deploy API code plus committed model artifacts
 
-- Reason: the challenge requires automatic deployment on pushes to `main`, while the trained model is produced locally and then shipped as an artifact.
-- Impact: the workflow runs `black` and `pytest`, copies the deployment bundle to EC2 over SSH, and rebuilds the API service there.
+- Reason: the challenge requires automatic deployment on pushes to `main`, while the trained model artifacts are part of the released deployment image.
+- Impact: GitHub Actions now validates the deployment code, publishes the image, and then triggers a separate EC2 deployment workflow.
+
+### Decision 11: Split deployment into separate CI and CD workflows
+
+- Reason: separating image build/publish from EC2 rollout gives clearer responsibilities, faster deployments, and a more production-like release flow.
+- Impact: CI now produces a tagged Docker image in Docker Hub, and CD only pulls a specific image tag onto EC2 and restarts the service.
+
+### Decision 12: Deploy immutable Docker Hub images by commit SHA
+
+- Reason: SHA-tagged images are traceable and easy to roll back compared with rebuilding source directly on the server.
+- Impact: EC2 runtime configuration is now image-based and uses `IMAGE_TAG=sha-<commit>` during deployment.
+
+
+-----------
 
 ## Problems Faced
 
@@ -185,3 +215,10 @@ flowchart LR
 - Cause: the environment resolved a NumPy version that was too new for the pinned `pandas==1.4.4`, which caused a binary ABI mismatch during import.
 - Resolution: `numpy<2` was added to the DS and MLE package dependencies so the installed NumPy version stays compatible with the older pandas version used in the project.
 - Outcome: the DS container could import the training code successfully and the model artifacts were saved.
+
+### Deployment workflow was too tightly coupled to source-copy rebuilds
+
+- Problem: the first deployment workflow rebuilt the application source directly on EC2, which mixed CI and CD concerns and made releases less traceable.
+- Cause: the initial implementation copied project files to the server and ran `docker compose up -d --build` remotely.
+- Resolution: the deployment was refactored into two workflows: CI builds/tests and pushes a Docker image to Docker Hub, while CD pulls the specific SHA-tagged image on EC2 and restarts the service.
+- Outcome: the release flow is now closer to production practice and simpler server-side deployment steps.

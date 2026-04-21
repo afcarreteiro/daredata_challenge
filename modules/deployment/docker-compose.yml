@@ -1,8 +1,6 @@
 services:
   prediction-api:
-    build:
-      context: ../..
-      dockerfile: modules/deployment/Dockerfile
+    image: ${DOCKERHUB_IMAGE}:${IMAGE_TAG}
     container_name: prediction-api
     environment:
       - MODEL_DIR=/app/models

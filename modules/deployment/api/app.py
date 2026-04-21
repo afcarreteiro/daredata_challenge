@@ -6,11 +6,11 @@ import os
 from flask import Flask, jsonify, request
 import pandas as pd
 
-from data_science.modelling import SimpleModel
-
 
 def load_model(model_dir: Path):
     """Load the trained DS model and its supporting artifacts."""
+
+    from data_science.modelling import SimpleModel
 
     model = SimpleModel()
     model.load(str(model_dir))
@@ -67,9 +67,9 @@ def create_app(model=None) -> Flask:
     return app
 
 
+app = None if os.getenv("DEPLOYMENT_SKIP_MODEL_LOAD") == "1" else create_app()
+
 
 if __name__ == "__main__":
-
-    app = None if os.getenv("DEPLOYMENT_SKIP_MODEL_LOAD") == "1" else create_app()
-    if app is not None:
-        app.run(host="0.0.0.0", port=int(os.getenv("PORT", "5000")))
+    runtime_app = app or create_app()
+    runtime_app.run(host="0.0.0.0", port=int(os.getenv("PORT", "5000")))
