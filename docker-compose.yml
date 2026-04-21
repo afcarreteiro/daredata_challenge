@@ -24,24 +24,24 @@ services:
       context: ./modules/de/docker
     container_name: airflow
     ports:
-      - 8082:8082
+      - "8082:8080"
+    depends_on:
+      operational-db:
+        condition: service_healthy
     environment:
+      - ADMIN_DB_HOST=operational-db
+      - ADMIN_DB_PORT=5432
+      - ADMIN_DB_NAME=companydata
       - ADMIN_DB_USER=admin
-      - ADMIN_DB_PASSWORD=${ADMIN_DB_PASSWORD}  # password for the DB admin user
+      - ADMIN_DB_PASSWORD=admin
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://admin:admin@operational-db:5432/companydata
+      - AIRFLOW__CORE__EXECUTOR=SequentialExecutor
       - AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION=True
       - AIRFLOW__CORE__LOAD_EXAMPLES=False
       - AIRFLOW__DATABASE__LOAD_DEFAULT_CONNECTIONS=False
       - AIRFLOW_HOME=/opt/airflow
-      - _AIRFLOW_DB_UPGRADE=True
-      - _AIRFLOW_WWW_USER_CREATE=True
-      - _AIRFLOW_WWW_USER_USERNAME=airflow
-      - _AIRFLOW_WWW_USER_PASSWORD=airflow
-      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
-      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
       - ./modules/de/dags:/opt/airflow/dags
-      - ./modules/de/plugins:/opt/airflow/plugins
 
   # DATA SCIENCE MODULE
   ## Reimplement this section if you're taking the data science test!
@@ -51,9 +51,9 @@ services:
       dockerfile: ./ds/docker/Dockerfile
     environment:
       - DS_DB_USER=ds_user
-      - DS_DB_PASSWORD=${DS_DB_PASSWORD}  # password for the DB admin user
-      - DB_HOSTNAME=${DB_HOSTNAME}
-      - DB_PORT=${DB_PORT}
+      - DS_DB_PASSWORD=ds_user
+      - DB_HOSTNAME=operational-db
+      - DB_PORT=5432
     depends_on:
       - operational-db
     volumes:
