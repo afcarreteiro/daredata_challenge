@@ -35,7 +35,6 @@ It's very important that you have the ability to deploy your solutions using mod
 
 ## Running the Final System
 
-* Set the required environment variables for the `docker-compose.yml` file.
 * Run `docker-compose up` to run the entire system.
 * If you're not a `DE`, in order to have the data available, you should navigate to `localhost:8082` and activate the Airflow DAGs in the following order: `load_client_data`, `load_sales_data`, and when both of them have successfully run, `process_data`.
 * The `DS` component should be waiting until the `feature_store` table is available, and then trigger the model training.

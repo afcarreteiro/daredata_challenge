@@ -52,18 +52,26 @@ flowchart LR
     CI --> TESTS[black + pytest]
     TESTS --> PKG[Package API and model artifacts]
     PKG --> EC2[AWS EC2]
-EC2 --> API[Flask /predict API]
+    EC2 --> API[Flask /predict API]
 ```
 
 ## Validation Screenshots
 
 ### Airflow DAGs Working
 
-![Airflow DAGs working](screenshots/DAGS_working.png)
+<img src="./screenshots/DAGS_working.png" alt="Airflow DAGs working" width="900" />
 
 ### Airflow DAG Activity
 
-![Airflow DAG activity](screenshots/DAGS_Activity.png)
+<img src="./screenshots/DAGS_Activity.png" alt="Airflow DAG activity" width="900" />
+
+### Database Validation
+
+<img src="./screenshots/feature_store_data.png" alt="feature_store data preview" width="900" />
+
+<img src="./screenshots/feature_store_count.png" alt="feature_store row count" width="700" />
+
+<img src="./screenshots/montly_sales_data.png" alt="monthly_sales data preview" width="900" />
 
 
 
@@ -80,6 +88,9 @@ EC2 --> API[Flask /predict API]
 | 2026-04-21 | Resolve container and dependency issues during DE validation | 0h30m      | Done   | Fixed Airflow Docker startup issues and pandas/SQLAlchemy compatibility problem      |
 | 2026-04-21 | Stabilize Airflow scheduler metadata storage                 | 0h20m      | Done   | Moved Airflow metadata from SQLite to Postgres to avoid scheduler heartbeat failures |
 | 2026-04-21 | Fix sales ETL database transaction path                      | 0h20m      | Done   | Kept delete/insert operations on the same DB connection and added step-level logging |
+| 2026-04-21 | Fix DS Docker build compatibility                            | 0h15m      | Done   | Aligned DS and MLE package metadata and DS runtime with the Python version supported by auto-sklearn |
+| 2026-04-21 | Fix DS runtime NumPy/Pandas binary compatibility             | 0h10m      | Done   | Restricted NumPy to `<2` so the DS container could import pandas and finish model training |
+| 2026-04-21 | Implement deployment API and CI/CD foundation                | 0h45m      | Done   | Added Flask API, Docker runtime, API tests, and GitHub Actions deployment to EC2 |
 
 
 ## Decisions And Rationale
@@ -113,6 +124,16 @@ EC2 --> API[Flask /predict API]
 
 - Reason: the challenge describes a workflow that fetches the customer-related files individually, and the Airflow UI is clearer when each file load is visible as its own task.
 - Impact: reviewers can inspect task-level behavior directly in the DAG graph instead of seeing one opaque loader task.
+
+### Decision 7: Deploy the model behind a minimal Flask API on a single EC2 instance
+
+- Reason: one Dockerized Flask service on EC2 is the simplest approach that still satisfies the internet-access requirement and keeps the deployment easy to explain.
+- Impact: the production path stays small, with one API service, one public endpoint, and no extra orchestration layers.
+
+### Decision 8: Use GitHub Actions to validate and deploy API code plus committed model artifacts
+
+- Reason: the challenge requires automatic deployment on pushes to `main`, while the trained model is produced locally and then shipped as an artifact.
+- Impact: the workflow runs `black` and `pytest`, copies the deployment bundle to EC2 over SSH, and rebuilds the API service there.
 
 ## Problems Faced
 
@@ -149,3 +170,18 @@ EC2 --> API[Flask /predict API]
 - Problem: the `load_sales_data` task logged successful S3 fetches and then appeared to hang without completing.
 - Cause: the database layer was mixing one transaction-bound SQLAlchemy connection for the monthly deletes with separate engine-level pandas `to_sql()` inserts, which made the sales write path inconsistent and harder to diagnose.
 - Resolution: the sales-month delete and insert operations were updated to use the same DB connection, and step-level logging was added around the sales ETL flow.
+- Outcome: the task now has a consistent transaction path and clearer runtime logs for validation and debugging.
+
+### DS Docker build failed during `pip install /ds/ds_package`
+
+- Problem: the DS image build failed at the package installation step, first surfacing as missing runtime dependencies and then as incompatibility around the model-training dependency stack.
+- Cause: the installable package metadata was incomplete in `pyproject.toml`, and the DS image was using Python 3.10 while `auto-sklearn==0.14.7` is aligned with Python 3.9-era support.
+- Resolution: runtime dependencies were declared in `pyproject.toml`, and the DS image plus DS/MLE package Python constraints were aligned to Python 3.9.
+- Outcome: the DS image now matches the expected dependency stack and can proceed past package installation when rebuilt.
+
+### DS runtime failed with NumPy/Pandas binary incompatibility
+
+- Problem: after the DS image built successfully, the `model-training` container failed at runtime with `ValueError: numpy.dtype size changed, may indicate binary incompatibility`.
+- Cause: the environment resolved a NumPy version that was too new for the pinned `pandas==1.4.4`, which caused a binary ABI mismatch during import.
+- Resolution: `numpy<2` was added to the DS and MLE package dependencies so the installed NumPy version stays compatible with the older pandas version used in the project.
+- Outcome: the DS container could import the training code successfully and the model artifacts were saved.

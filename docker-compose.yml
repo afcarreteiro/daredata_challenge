@@ -9,13 +9,13 @@ services:
     ports:
       - "5432:5432"
     healthcheck:
-      test: ["CMD", "pg_isready", "-U", "admin", "-d", "companydata"]
+      test: ["CMD", "pg_isready", "-U", "${POSTGRES_USER}", "-d", "${POSTGRES_DB}"]
       interval: 5s
       retries: 5
     environment:
-      - POSTGRES_USER=admin
-      - POSTGRES_PASSWORD=admin
-      - POSTGRES_DB=companydata
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
     volumes:
       - ./modules/de/db_admin/setup_users.sql:/docker-entrypoint-initdb.d/setup_users.sql
 
@@ -25,16 +25,18 @@ services:
     container_name: airflow
     ports:
       - "8082:8080"
-    depends_on:
-      operational-db:
-        condition: service_healthy
     environment:
-      - ADMIN_DB_HOST=operational-db
-      - ADMIN_DB_PORT=5432
-      - ADMIN_DB_NAME=companydata
-      - ADMIN_DB_USER=admin
-      - ADMIN_DB_PASSWORD=admin
-      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://admin:admin@operational-db:5432/companydata
+      - ADMIN_DB_HOST=${ADMIN_DB_HOST:-operational-db}
+      - ADMIN_DB_PORT=${ADMIN_DB_PORT:-5432}
+      - ADMIN_DB_NAME=${ADMIN_DB_NAME}
+      - ADMIN_DB_USER=${ADMIN_DB_USER}
+      - ADMIN_DB_PASSWORD=${ADMIN_DB_PASSWORD}
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=${AIRFLOW__DATABASE__SQL_ALCHEMY_CONN}
+      - AIRFLOW_ADMIN_USERNAME=${AIRFLOW_ADMIN_USERNAME}
+      - AIRFLOW_ADMIN_PASSWORD=${AIRFLOW_ADMIN_PASSWORD}
+      - AIRFLOW_ADMIN_FIRSTNAME=${AIRFLOW_ADMIN_FIRSTNAME:-Air}
+      - AIRFLOW_ADMIN_LASTNAME=${AIRFLOW_ADMIN_LASTNAME:-Flow}
+      - AIRFLOW_ADMIN_EMAIL=${AIRFLOW_ADMIN_EMAIL:-airflow@example.com}
       - AIRFLOW__CORE__EXECUTOR=SequentialExecutor
       - AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION=True
       - AIRFLOW__CORE__LOAD_EXAMPLES=False
@@ -50,11 +52,9 @@ services:
       context: ./modules  # need this context in order to be able to copy the MLE nodule to the Docker image
       dockerfile: ./ds/docker/Dockerfile
     environment:
-      - DS_DB_USER=ds_user
-      - DS_DB_PASSWORD=ds_user
+      - DS_DB_USER=${DS_DB_USER}
+      - DS_DB_PASSWORD=${DS_DB_PASSWORD}
       - DB_HOSTNAME=operational-db
       - DB_PORT=5432
-    depends_on:
-      - operational-db
     volumes:
       - ./modules/ds/models/:/models
