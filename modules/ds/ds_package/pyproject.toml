@@ -11,4 +11,12 @@ authors = [
 description = "Data Science Package"
 readme = "README.md"
 license = { file="LICENSE" }
-requires-python = ">=3.10"
+requires-python = ">=3.9,<3.10"
+dependencies = [
+  "numpy<2",
+  "pandas==1.4.4",
+  "matplotlib==3.5.3",
+  "sqlalchemy==1.4.41",
+  "psycopg2-binary==2.9.3",
+  "auto-sklearn==0.14.7",
+]

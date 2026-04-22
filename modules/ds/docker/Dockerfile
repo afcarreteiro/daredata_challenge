@@ -1,4 +1,4 @@
-FROM python:3.10
+FROM python:3.9
 
 COPY mle/mle_package /mle/mle_package
 RUN pip install /mle/mle_package

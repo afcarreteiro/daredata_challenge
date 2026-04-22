@@ -3,6 +3,8 @@ import autosklearn.classification
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import OneHotEncoder
 import pickle
+from pathlib import Path
+from datetime import datetime
 from typing import Any
 import pandas as pd
 
@@ -11,20 +13,38 @@ class SimpleModel(MLEModel):
     ohe = None         # one-hot encoder for categorical features
     model = None       # the model itself
 
+    def _get_latest_artifact_paths(self, model_folder: str) -> tuple[Path, Path]:
+        model_dir = Path(model_folder)
+        model_files = sorted(model_dir.glob("model_*.pkl"), reverse=True)
+
+        for model_path in model_files:
+            timestamp = model_path.stem.removeprefix("model_")
+            ohe_path = model_dir / f"one_hot_encoder_{timestamp}.pkl"
+            if ohe_path.exists():
+                return model_path, ohe_path
+
+        return model_dir / "model.pkl", model_dir / "one_hot_encoder.pkl"
+
     def load(self, model_folder) -> Any:
         """Loads the model to memory. To be implemented by the data scientist.
         """
-        with open(f"{model_folder}/model.pkl", "rb") as f:
+        model_path, ohe_path = self._get_latest_artifact_paths(model_folder)
+
+        with open(model_path, "rb") as f:
             self.model = pickle.load(f)
-        with open(f"{model_folder}/one_hot_encoder.pkl", "rb") as f:
+        with open(ohe_path, "rb") as f:
             self.ohe = pickle.load(f)
 
     def save(self, model_folder) -> None:
         """Saves the model to a given location. To be implemented by the data scientist.
         """
-        with open(f"{model_folder}/model.pkl", "wb") as f:
+        model_dir = Path(model_folder)
+        model_dir.mkdir(parents=True, exist_ok=True)
+        timestamp = datetime.now().strftime("%Y%m%d%H%M%S%f")
+
+        with open(model_dir / f"model_{timestamp}.pkl", "wb") as f:
             pickle.dump(self.model, f)
-        with open(f"{model_folder}/one_hot_encoder.pkl", "wb") as f:
+        with open(model_dir / f"one_hot_encoder_{timestamp}.pkl", "wb") as f:
             pickle.dump(self.ohe, f)
 
     def _one_hot_encode(self, dataset: pd.DataFrame):

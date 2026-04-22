@@ -1,0 +1,7 @@
+[tool.black]
+line-length = 88
+target-version = ["py310", "py311"]
+
+[tool.pytest.ini_options]
+pythonpath = ["modules/de/dags"]
+testpaths = ["modules/de/tests"]

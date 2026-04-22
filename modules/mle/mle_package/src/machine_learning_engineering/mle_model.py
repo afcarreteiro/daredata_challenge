@@ -1,9 +1,29 @@
-from typing import Iterable, Any
-import pandas as pd
+from typing import Any
+import logging
 from os.path import expanduser
+from pathlib import Path
+
+
+logger = logging.getLogger(__name__)
 
 
 class MLEModel():
+
+	def _configure_logger(self) -> None:
+		log_file = Path(expanduser("~")) / "mle_storage" / "logging" / "mle.log"
+		log_file.parent.mkdir(parents=True, exist_ok=True)
+
+		for handler in logger.handlers:
+			if isinstance(handler, logging.FileHandler) and Path(handler.baseFilename) == log_file:
+				return
+
+		file_handler = logging.FileHandler(log_file)
+		file_handler.setLevel(logging.INFO)
+		file_handler.setFormatter(
+			logging.Formatter("%(asctime)s %(levelname)s %(name)s %(message)s")
+		)
+		logger.addHandler(file_handler)
+		logger.setLevel(logging.INFO)
 
 	def load(self, *args, **kwargs) -> Any:
 		"""
@@ -34,8 +54,17 @@ class MLEModel():
 		Calls the predict function, implemented by the data scientist, and logs the results
 		of the prediction to storage.
 		"""
+		try:
+			self._configure_logger()
+		except OSError:
+			pass
+
+		logger.info(f"Predicting label for client_idx={client_idx}")
 		predicted_label = self.predict(features)
 		self.log_to_storage(client_idx, predicted_label)
+		logger.info(
+			f"Prediction stored for client_idx={client_idx} with predicted_label={predicted_label}",
+		)
 
 		return predicted_label
 
@@ -48,4 +77,5 @@ class MLEModel():
 			with open(f'{expanduser("~")}/mle_storage/labels', 'a+') as f:
 				f.write(f"{client_idx},{predicted_label}\n")
 		except FileNotFoundError:
+			logger.warning("Prediction storage directory not found: %s/mle_storage", expanduser("~"))
 			print("Have you created the ~/mle_storage directory?")
