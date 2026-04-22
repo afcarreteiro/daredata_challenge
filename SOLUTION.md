@@ -98,6 +98,7 @@ flowchart LR
 | 2026-04-22 | Create remote repositories and deployment infrastructure      | 0h20m      | Done   | Created the GitHub repository, private Docker Hub repository, and AWS EC2 instance for the deployment flow |
 | 2026-04-22 | Prepare EC2 runtime and GitHub secrets                        | 0h30m      | Done   | Installed Docker on EC2, created deployment folders, copied runtime compose file, and added repository secrets |
 | 2026-04-22 | Validate public deployment access                             | 0h15m      | Done   | Added the custom TCP port rule for `5000` to the EC2 security group and validated remote requests to `/predict` |
+| 2026-04-22 | Harden EC2 deployment against disk exhaustion                 | 0h10m      | Done   | Moved Docker cleanup before image pull and added disk-usage diagnostics to prevent `no space left on device` errors |
 
 ----------
 
@@ -210,6 +211,7 @@ flowchart LR
 - Triggered the CD workflow to connect to EC2, write the runtime `.env`, pull the SHA-tagged image, and restart the API service.
 - Validated the deployment on the server with local `curl` requests.
 - Validated the deployment externally by sending a request from the local machine to the EC2 public IP on port `5000`.
+- Added pre-pull Docker cleanup and disk-usage diagnostics after hitting an EC2 disk-space error during repeated deployments.
 
 
 -----------
@@ -271,3 +273,10 @@ flowchart LR
 - Cause: the initial implementation copied project files to the server and ran `docker compose up -d --build` remotely.
 - Resolution: the deployment was refactored into two workflows: CI builds/tests and pushes a Docker image to Docker Hub, while CD pulls the specific SHA-tagged image on EC2 and restarts the service.
 - Outcome: the release flow is now closer to production practice and simpler server-side deployment steps.
+
+### EC2 deployment failed with `no space left on device`
+
+- Problem: a repeated deployment failed during the EC2 rollout phase because the host ran out of disk space before the new image finished pulling.
+- Cause: the workflow was pruning Docker images only after the new image had already been downloaded, which is too late on a small EC2 instance.
+- Resolution: the EC2 deploy workflow was updated to run container/image/builder cleanup and disk-usage diagnostics before `docker compose pull`.
+- Outcome: the deployment host now frees disk space before downloading a new SHA-tagged image, which reduces the chance of repeated rollout failures.

@@ -47,10 +47,16 @@ jobs:
             EOF
 
             echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+            df -h
+            docker system df || true
+            docker container prune -f || true
+            docker image prune -af || true
+            docker builder prune -af || true
+            df -h
+            docker system df || true
             docker compose pull
             docker compose up -d --force-recreate
             docker compose ps
-            docker image prune -f
             sleep 15
             curl --fail http://localhost:5000/health
             curl --fail \
