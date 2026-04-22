@@ -10,7 +10,7 @@ It will be expanded as the DE, deployment, and extra-task work moves forward.
 - Shared ETL logic lives in a small Python package under the Airflow DAGs folder so the DAG files stay orchestration-focused.
 - The deployment direction is a single AWS EC2 instance pulling immutable Docker Hub images, with GitHub Actions split into separate CI and CD workflows.
 
--------
+---
 
 ## Architecture Diagrams
 
@@ -26,7 +26,9 @@ flowchart LR
     API --> USERS[End users]
 ```
 
--------
+
+
+---
 
 ### DE Module Flow
 
@@ -44,7 +46,9 @@ flowchart TD
     I --> J[(feature_store)]
 ```
 
---------
+
+
+---
 
 ### Planned Deployment Flow
 
@@ -58,49 +62,38 @@ flowchart LR
     EC2 --> API[Flask /predict API]
 ```
 
---------
-
-## Validation Screenshots
-
-### Airflow DAGs Working
 
 
+---
 
-### Airflow DAG Activity
-
-
-
-### Database Validation
-
-
---------
-
+The `screenshots` folder in the project root contains proof that the solution is working end to end, including successful Airflow runs, database validation, GitHub Actions executions, and the deployed API responding correctly.
 
 ## Timeline
 
 
-| Date       | Task                                                         | Time Spent | Status | Notes                                                                                                      |
-| ---------- | ------------------------------------------------------------ | ---------- | ------ | ---------------------------------------------------------------------------------------------------------- |
-| 2026-04-21 | Initialize repository and create baseline `main` commit      | 0h15m      | Done   | Challenge-required clean starting point                                                                    |
-| 2026-04-21 | Review challenge scope and module contracts                  | 0h20m      | Done   | Read root README plus DE and deployment instructions                                                       |
-| 2026-04-21 | Define minimal architecture for DE and deployment            | 0h25m      | Done   | Chose Airflow + Postgres, Flask + EC2 + GitHub Actions                                                     |
-| 2026-04-21 | Implement initial DE framework                               | 1h30m      | Done   | Airflow image, SQL bootstrap, shared ETL package, DAGs                                                     |
-| 2026-04-21 | Correct DE workflow shape and sales idempotency              | 0h25m      | Done   | Split customer DAG into explicit tasks and simplified monthly sales reload logic                           |
-| 2026-04-21 | Resolve container and dependency issues during DE validation | 0h30m      | Done   | Fixed Airflow Docker startup issues and pandas/SQLAlchemy compatibility problem                            |
-| 2026-04-21 | Stabilize Airflow scheduler metadata storage                 | 0h20m      | Done   | Moved Airflow metadata from SQLite to Postgres to avoid scheduler heartbeat failures                       |
-| 2026-04-21 | Fix sales ETL database transaction path                      | 0h20m      | Done   | Kept delete/insert operations on the same DB connection and added step-level logging                       |
-| 2026-04-21 | Fix DS Docker build compatibility                            | 0h15m      | Done   | Aligned DS and MLE package metadata and DS runtime with the Python version supported by auto-sklearn       |
-| 2026-04-21 | Fix DS runtime NumPy/Pandas binary compatibility             | 0h10m      | Done   | Restricted NumPy to `<2` so the DS container could import pandas and finish model training                 |
-| 2026-04-21 | Implement DS extra task for dynamic model artifact naming    | 0h15m      | Done   | Saved timestamped model/OHE artifacts and made model loading pick the latest matching pair by default      |
-| 2026-04-21 | Implement MLE extra task for base-model logging              | 0h10m      | Done   | Added lightweight logging around prediction and prediction-storage writes in `MLEModel`                    |
-| 2026-04-21 | Implement deployment API and CI/CD foundation                | 1h00m      | Done   | Added Flask API, Docker runtime, API tests, and GitHub Actions deployment to EC2                           |
-| 2026-04-21 | Refactor deployment to immutable image CI/CD                 | 0h45m      | Done   | Split CI and CD workflows, switched EC2 runtime to Docker Hub image pulls, and prepared runtime env config |
-| 2026-04-22 | Create remote repositories and deployment infrastructure      | 0h20m      | Done   | Created the GitHub repository, private Docker Hub repository, and AWS EC2 instance for the deployment flow |
-| 2026-04-22 | Prepare EC2 runtime and GitHub secrets                        | 0h30m      | Done   | Installed Docker on EC2, created deployment folders, copied runtime compose file, and added repository secrets |
-| 2026-04-22 | Validate public deployment access                             | 0h15m      | Done   | Added the custom TCP port rule for `5000` to the EC2 security group and validated remote requests to `/predict` |
-| 2026-04-22 | Harden EC2 deployment against disk exhaustion                 | 0h10m      | Done   | Moved Docker cleanup before image pull and added disk-usage diagnostics to prevent `no space left on device` errors |
+| Date       | Task                                                         | Time Spent | Status | Notes                                                                                                               |
+| ---------- | ------------------------------------------------------------ | ---------- | ------ | ------------------------------------------------------------------------------------------------------------------- |
+| 2026-04-21 | Initialize repository and create baseline `main` commit      | 0h15m      | Done   | Challenge-required clean starting point                                                                             |
+| 2026-04-21 | Review challenge scope and module contracts                  | 0h20m      | Done   | Read root README plus DE and deployment instructions                                                                |
+| 2026-04-21 | Define minimal architecture for DE and deployment            | 0h25m      | Done   | Chose Airflow + Postgres, Flask + EC2 + GitHub Actions                                                              |
+| 2026-04-21 | Implement initial DE framework                               | 1h30m      | Done   | Airflow image, SQL bootstrap, shared ETL package, DAGs                                                              |
+| 2026-04-21 | Correct DE workflow shape and sales idempotency              | 0h25m      | Done   | Split customer DAG into explicit tasks and simplified monthly sales reload logic                                    |
+| 2026-04-21 | Resolve container and dependency issues during DE validation | 0h30m      | Done   | Fixed Airflow Docker startup issues and pandas/SQLAlchemy compatibility problem                                     |
+| 2026-04-21 | Stabilize Airflow scheduler metadata storage                 | 0h20m      | Done   | Moved Airflow metadata from SQLite to Postgres to avoid scheduler heartbeat failures                                |
+| 2026-04-21 | Fix sales ETL database transaction path                      | 0h20m      | Done   | Kept delete/insert operations on the same DB connection and added step-level logging                                |
+| 2026-04-21 | Fix DS Docker build compatibility                            | 0h15m      | Done   | Aligned DS and MLE package metadata and DS runtime with the Python version supported by auto-sklearn                |
+| 2026-04-21 | Fix DS runtime NumPy/Pandas binary compatibility             | 0h15m      | Done   | Restricted NumPy to `<2` so the DS container could import pandas and finish model training                          |
+| 2026-04-21 | Implement DS extra task for dynamic model artifact naming    | 0h15m      | Done   | Saved timestamped model/OHE artifacts and made model loading pick the latest matching pair by default               |
+| 2026-04-21 | Implement MLE extra task for base-model logging              | 0h10m      | Done   | Added lightweight logging around prediction and prediction-storage writes in `MLEModel`                             |
+| 2026-04-21 | Implement deployment API and CI/CD foundation                | 1h00m      | Done   | Added Flask API, Docker runtime, API tests, and GitHub Actions deployment to EC2                                    |
+| 2026-04-21 | Refactor deployment to immutable image CI/CD                 | 0h45m      | Done   | Split CI and CD workflows, switched EC2 runtime to Docker Hub image pulls, and prepared runtime env config          |
+| 2026-04-22 | Create remote repositories and deployment infrastructure     | 0h20m      | Done   | Created the GitHub repository, private Docker Hub repository, and AWS EC2 instance for the deployment flow          |
+| 2026-04-22 | Prepare EC2 runtime and GitHub secrets                       | 0h30m      | Done   | Installed Docker on EC2, created deployment folders, copied runtime compose file, and added repository secrets      |
+| 2026-04-22 | Validate public deployment access                            | 0h15m      | Done   | Added the custom TCP port rule for `5000` to the EC2 security group and validated remote requests to `/predict`     |
+| 2026-04-22 | Harden EC2 deployment against disk exhaustion                | 0h10m      | Done   | Moved Docker cleanup before image pull and added disk-usage diagnostics to prevent `no space left on device` errors |
 
-----------
+
+---
 
 ## Decisions And Rationale
 
@@ -166,8 +159,7 @@ flowchart LR
 - Reason: SHA-tagged images are traceable and easy to roll back compared with rebuilding source directly on the server.
 - Impact: EC2 runtime configuration is now image-based and uses `IMAGE_TAG=sha-<commit>` during deployment.
 
-
------------
+---
 
 ## Deployment Runbook
 
@@ -212,9 +204,12 @@ flowchart LR
 - Validated the deployment on the server with local `curl` requests.
 - Validated the deployment externally by sending a request from the local machine to the EC2 public IP on port `5000`.
 - Added pre-pull Docker cleanup and disk-usage diagnostics after hitting an EC2 disk-space error during repeated deployments.
+- Here is the EC2 instance url to make predictions via the API: 
+  ```python
+  http://16.171.198.135:5000/predict
+  ```
 
-
------------
+---
 
 ## Problems Faced
 
