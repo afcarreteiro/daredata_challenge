@@ -95,6 +95,9 @@ flowchart LR
 | 2026-04-21 | Implement MLE extra task for base-model logging              | 0h10m      | Done   | Added lightweight logging around prediction and prediction-storage writes in `MLEModel`                    |
 | 2026-04-21 | Implement deployment API and CI/CD foundation                | 1h00m      | Done   | Added Flask API, Docker runtime, API tests, and GitHub Actions deployment to EC2                           |
 | 2026-04-21 | Refactor deployment to immutable image CI/CD                 | 0h45m      | Done   | Split CI and CD workflows, switched EC2 runtime to Docker Hub image pulls, and prepared runtime env config |
+| 2026-04-22 | Create remote repositories and deployment infrastructure      | 0h20m      | Done   | Created the GitHub repository, private Docker Hub repository, and AWS EC2 instance for the deployment flow |
+| 2026-04-22 | Prepare EC2 runtime and GitHub secrets                        | 0h30m      | Done   | Installed Docker on EC2, created deployment folders, copied runtime compose file, and added repository secrets |
+| 2026-04-22 | Validate public deployment access                             | 0h15m      | Done   | Added the custom TCP port rule for `5000` to the EC2 security group and validated remote requests to `/predict` |
 
 ----------
 
@@ -139,8 +142,8 @@ flowchart LR
 ### Decision 8: Add lightweight logging to the shared MLE base class
 
 - Reason: the MLE extra task is small and is best handled centrally so every derived model benefits without duplicated code.
-- How it was made: the `MLEModel` class now uses the standard library `logging` module to log when a prediction starts, when it is persisted, and when the storage directory is missing.
-- Impact: prediction flow is easier to observe during runtime while keeping the existing public API and storage behavior unchanged.
+- How it was made: the `MLEModel` class now uses the standard library `logging` module with a file handler targeting `~/mle_storage/logging/mle.log`, and logs when a prediction starts, when it is persisted, and when the storage directory is missing.
+- Impact: prediction flow is easier to observe during runtime, logs persist in the same mounted runtime storage as predictions, and the existing public API and prediction-record storage behavior stay unchanged.
 
 ### Decision 9: Deploy the model behind a minimal Flask API on a single EC2 instance
 
@@ -161,6 +164,52 @@ flowchart LR
 
 - Reason: SHA-tagged images are traceable and easy to roll back compared with rebuilding source directly on the server.
 - Impact: EC2 runtime configuration is now image-based and uses `IMAGE_TAG=sha-<commit>` during deployment.
+
+
+-----------
+
+## Deployment Runbook
+
+### External services created
+
+- Created a GitHub repository to host the challenge solution and GitHub Actions workflows.
+- Created a private Docker Hub repository to store the deployment image produced by CI.
+- Created an AWS EC2 Ubuntu instance to run the deployed prediction API.
+
+### EC2 instance setup
+
+- Connected to the instance over SSH using the downloaded key pair and the `ubuntu` user.
+- Updated the instance packages.
+- Installed Docker Engine and the Docker Compose plugin.
+- Created the runtime folder structure:
+  - `~/daredata-challenge/modules/deployment`
+  - `~/daredata-challenge/modules/deployment/storage`
+- Copied the runtime deployment file `modules/deployment/docker-compose.yml` to the instance.
+- Logged in to Docker Hub from the instance so the server could pull the private deployment image.
+
+### GitHub repository secrets created
+
+- Docker Hub:
+  - `DOCKERHUB_USERNAME`
+  - `DOCKERHUB_TOKEN`
+  - `DOCKERHUB_IMAGE`
+- EC2:
+  - `EC2_HOST`
+  - `EC2_USER`
+  - `EC2_SSH_PRIVATE_KEY`
+
+### Network configuration required
+
+- Added an inbound EC2 security-group rule for SSH on port `22` from the development machine IP.
+- Added an inbound `Custom TCP` rule on port `5000` so the deployed API could be reached from outside the instance.
+- This final rule was necessary for requests from the local machine to reach `/predict`.
+
+### Deployment validation sequence
+
+- Pushed the working branch to GitHub and ran the CI workflow to build, test, and publish the image to Docker Hub.
+- Triggered the CD workflow to connect to EC2, write the runtime `.env`, pull the SHA-tagged image, and restart the API service.
+- Validated the deployment on the server with local `curl` requests.
+- Validated the deployment externally by sending a request from the local machine to the EC2 public IP on port `5000`.
 
 
 -----------
